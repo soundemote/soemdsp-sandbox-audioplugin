@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>soemdsp perform</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #101418; color: #e8eef2; }
+    body { font: 15px/1.4 system-ui, sans-serif; padding: 20px; box-sizing: border-box; }
+    #status { margin: 0 0 8px; }
+    #summary { white-space: pre-wrap; color: #9eb0b8; }
+  </style>
+</head>
+<body>
+  <p id="status">Perform shell. Waiting for a patch.</p>
+  <pre id="summary"></pre>
+  <script>
+    const TYPE = "soemdsp-perform";
+    function emit(msg) {
+      const payload = Object.assign({ type: TYPE, v: 1 }, msg);
+      const backend = window.__JUCE__ && window.__JUCE__.backend;
+      if (backend && typeof backend.emitEvent === "function")
+        backend.emitEvent("soemdsp-perform", payload);
+      try { window.parent.postMessage(payload, "*"); } catch (e) {}
+    }
+    window.soemdspPerform = {
+      loadPatch(patch) {
+        const name = (patch && (patch.name || patch.patchName)) || "(unnamed)";
+        const root = patch && patch.view && patch.view.canvases && patch.view.canvases.root;
+        const n = root && Array.isArray(root.elements) ? root.elements.length : 0;
+        document.getElementById("status").textContent =
+          "Patch received. This shell is not the phone/F canvas — that page comes from the sandbox perform pack.";
+        document.getElementById("summary").textContent = name + "\nPinned root tiles: " + n;
+      },
+      setSlot() {}
+    };
+    window.addEventListener("message", (event) => {
+      const data = event.data;
+      if (!data || data.type !== TYPE || data.v !== 1) return;
+      if (data.event === "loadPatch") window.soemdspPerform.loadPatch(data.patch);
+      if (data.event === "setSlot") window.soemdspPerform.setSlot(data.pluginId, data.value);
+    });
+    emit({ event: "ready" });
+  </script>
+</body>
+</html>
